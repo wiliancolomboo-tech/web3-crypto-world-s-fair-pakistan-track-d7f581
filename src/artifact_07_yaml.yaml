@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  pakflow-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pakflow_automation_worker
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - SOLANA_RPC_URL=https://api.devnet.solana.com
+      - PROGRAM_ID=PakF1ow111111111111111111111111111111111111
+      - RESEND_API_KEY=re_live_enterprise_secret_token
+      - BANKING_WEBHOOK_URL=https://raast-bridge.pakflow.io/api/v1/notify
+      - SLACK_WEBHOOK_URL=https://hooks.slack.com/services/T00/B00/X00
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"

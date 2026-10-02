@@ -1,0 +1,38 @@
+flowchart TD
+    subgraph ClientLayer["Clients & Exporters"]
+        Sender["Overseas Remitter / Global Client"]
+        Freelancer["Pakistani Exporter / Recipient"]
+        AgentCLI["PakFlow Enterprise CLI / Relayer Daemon"]
+    end
+
+    subgraph SolanaL1["Solana Runtime Engine (Anchor Program)"]
+        Program["PakFlow Core Program: pakflow_core"]
+        ConfigState["Global Platform State (Fee Treasury, Admin)"]
+        EscrowPDA["Remittance Escrow PDA (Vault Authority)"]
+        VaultToken["SPL Token Vault (USDC/USDT)"]
+        PythOracle["Pyth Network PKR/USD Price Feed"]
+        SoulboundMint["Token-2022 Soulbound Credit Mint"]
+    end
+
+    subgraph IntegrationLayer["Enterprise Off-Chain Services"]
+        RedisQueue["Redis Idempotency & Event Bus"]
+        ResendAPI["Resend Email API (FBR-Ready Tax Invoice)"]
+        BankingWebhook["1LINK / Raast Banking Gateway Bridge"]
+        SlackAlerts["DevOps / Compliance Webhooks"]
+    end
+
+    %% Flow Steps
+    Sender -->|"1. Initialize Remittance / Escrow (USDC)"| Program
+    Program -->|"2. Transfer Tokens to PDA"| VaultToken
+    Program -->|"3. Read USD/PKR Rate"| PythOracle
+    Program -->|"4. Emit RemittanceDeposited Event"| AgentCLI
+
+    AgentCLI -->|"5. Capture Event & Deduplicate"| RedisQueue
+    RedisQueue -->|"6. Trigger Proof-of-Payment Email"| ResendAPI
+    RedisQueue -->|"7. Post Settlement Payload"| BankingWebhook
+    RedisQueue -->|"8. Send Operational Alert"| SlackAlerts
+
+    Freelancer -->|"9. Fulfill Milestone / Submit Claim"| Program
+    Sender -->|"10. Release Escrow"| Program
+    Program -->|"11. Disburse USDC to Freelancer"| Freelancer
+    Program -->|"12. Mint Soulbound Credit Token"| SoulboundMint
